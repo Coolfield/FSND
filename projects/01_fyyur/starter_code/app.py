@@ -23,7 +23,7 @@ app.config.from_object('config')
 db = SQLAlchemy(app)
 
 # TOD0: connect to a local postgresql database
-migrate = Migrate(app, db)
+migrate = Migrate(app, db) #setup for flask-migrate
 
 #----------------------------------------------------------------------------#
 # Models.
@@ -34,12 +34,17 @@ class Venue(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
+    #genres = db.Column(db.ARRAY(db.String))
     city = db.Column(db.String(120))
     state = db.Column(db.String(120))
     address = db.Column(db.String(120))
     phone = db.Column(db.String(120))
+    #website = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
+    #seeking_talent = db.Column(db.Boolean())
+    #seeking_description = db.Column(db.String(500))
+
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
@@ -51,9 +56,12 @@ class Artist(db.Model):
     city = db.Column(db.String(120))
     state = db.Column(db.String(120))
     phone = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
+    genres = db.Column(db.ARRAY(db.String))
+    website = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
+    seeking_venue = db.Column(db.Boolean)
+    seeking_description = db.Column(db.String(500))
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
@@ -89,28 +97,23 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
-  data=[{
-    "city": "San Francisco",
-    "state": "CA",
-    "venues": [{
-      "id": 1,
-      "name": "The Musical Hop",
-      "num_upcoming_shows": 0,
-    }, {
-      "id": 3,
-      "name": "Park Square Live Music & Coffee",
-      "num_upcoming_shows": 1,
-    }]
-  }, {
-    "city": "New York",
-    "state": "NY",
-    "venues": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }]
-  return render_template('pages/venues.html', areas=data);
+  areas = db.session.query(Venue.city, Venue.state).distinct(Venue.city, Venue.state)
+  data = []
+  for area in areas:
+    areas = Venue.query.filter_by(state=area.state).filter_by(city=area.city).all()
+    venue_data = []
+    for venue in areas:
+      venue_data.append({
+        'id':venue.id,
+        'name':venue.name,
+        #'num_upcoming_shows': len(db.session.query(Show).filter(Show.show_date>datetime.now()).all())
+      })
+      data.append({
+        'city':area.city,
+        'state':area.state,
+        'venues':venue_data
+      })
+  return render_template('pages/venues.html', areas=data)
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
@@ -133,7 +136,7 @@ def show_venue(venue_id):
   # TODO: replace with real venue data from the venues table, using venue_id
   data1={
     "id": 1,
-    "name": "The Musical Hop",
+    "name": "Venue.query.get(Venue.name)",
     "genres": ["Jazz", "Reggae", "Swing", "Classical", "Folk"],
     "address": "1015 Folsom Street",
     "city": "San Francisco",
